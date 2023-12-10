@@ -9,7 +9,7 @@ namespace Day1
             var inputReader = new InputReader();
             var inputs = inputReader.Muliline("./input/input.txt");
 
-            // FirstPart(inputs);
+            FirstPart(inputs);
             SecondPart(inputs);
         }
 
