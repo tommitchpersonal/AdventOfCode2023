@@ -1,4 +1,4 @@
-﻿namespace Shared.Input
+namespace Shared.Input
 {
     public class InputReader
     {
