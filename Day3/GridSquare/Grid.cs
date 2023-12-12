@@ -1,7 +1,6 @@
 public class Grid
 {
-    public Dictionary<int, char> Squares;
-    public List<PartNumber> partNumbers;
+    private List<GridSquare> squares;
     
     private int width;
     private int height;
@@ -11,99 +10,174 @@ public class Grid
         height = inputs.Count();
         width = inputs.First().Length;
 
-        var count = 0;
+        squares = new List<GridSquare>();
 
-        Squares = new Dictionary<int, char>();
-
-        foreach (var input in inputs.ToArray())
+        for (var y = 0; y < height; y++)
         {
-            var charArray = input.ToCharArray();
+            var row = inputs.ToArray()[y].ToCharArray();
 
-            foreach (var c in charArray)
+            for (var x = 0; x < width; x++)
             {
-                Squares.Add(count, c);
-                count ++;
+                squares.Add(new GridSquare(x, y, row[x]));
             }
         }
+
+		foreach (var square in squares)
+		{
+			var adjacentSquares = GetAdjacentSquares(square);
+			square.SetAdjacentSquares(adjacentSquares.ToList());
+		}
     }
 
-    public IEnumerable<char> GetAdjacent(int position)
+	public List<char[]> GetValidStrings(Func<char, bool> itemCriterion, Func<char[], bool> adjacentCriterion)
+	{
+		var result = new List<char[]>();
+		var placeholder = new List<GridSquare>();
+
+		foreach (var square in squares)
+		{
+			if (square.ValidValue(itemCriterion))
+			{
+				placeholder.Add(square);
+			}
+			else if (placeholder.Any(p => p.ValidAdjacent(adjacentCriterion)))
+			{
+				result.Add(placeholder.Select(p => p.Value).ToArray());
+				placeholder.Clear();
+			}
+			else
+			{
+				placeholder.Clear();
+			}
+		}
+
+		return result;
+	}
+
+    private IEnumerable<GridSquare>? GetAdjacentSquares(GridSquare square)
     {
-        var chars = new List<char>();
+        var adjacentSquares = new List<GridSquare>();
 
-        if (!InFirstColumn(position))
+        var position = square.Position;
+
+        if (square == null)
         {
-            chars.Add(Squares[position - 1]);
+            return null;
         }
 
-        if (!InFirstColumn(position) && !InFirstRow(position))
+        if (!square.InFirstColumn())
         {
-            chars.Add(Squares[position - (width + 1)]);
+            (int x, int y) pos = new(position.x - 1, position.y);
+            var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
         }
 
-        if (!InFirstRow(position))
+        if (!square.InFirstColumn() && !square.InFirstRow())
         {
-            chars.Add(Squares[position - width]);
-        }
+			(int x, int y) pos = new(position.x - 1, position.y - 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        if (!InFirstRow(position) && !InLastColumn(position))
+        if (!square.InFirstRow())
         {
-            chars.Add(Squares[position - (width - 1)]);
-        }
+			(int x, int y) pos = new(position.x, position.y - 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        if (!InLastColumn(position))
-        {
-            chars.Add(Squares[position + 1]);
-        }
+		if (!square.InFirstRow() && !square.InLastColumn(width))
+		{
+			(int x, int y) pos = new(position.x + 1, position.y - 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        if (!InLastColumn(position) && !InLastRow(position))
-        {
-            chars.Add(Squares[position + (width + 1)]);
-        }
+		if (!square.InLastColumn(width))
+		{
+			(int x, int y) pos = new(position.x + 1, position.y);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        if (!InLastRow(position))
-        {
-            chars.Add(Squares[position + width]);
-        }
+		if (!square.InLastColumn(width) && !square.InLastRow(height))
+		{
+			(int x, int y) pos = new(position.x + 1, position.y + 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        if (!InLastRow(position) && !InFirstColumn(position))
-        {
-            chars.Add(Squares[position + (width - 1)]);
-        }
+		if (!square.InLastRow(height))
+		{
+			(int x, int y) pos = new(position.x, position.y + 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
 
-        return chars;
+		if (!square.InLastRow(height) && !square.InFirstColumn())
+		{
+			(int x, int y) pos = new(position.x - 1, position.y + 1);
+			var adj = FindByPosition(pos);
+			adjacentSquares.Add(adj);
+		}
+
+		return adjacentSquares;
     }
 
-    private List<PartNumber> FindPartNumbers()
+    private GridSquare FindByPosition((int x, int y) position)
     {
-        var sb = new List<char>();
-
-        foreach (var kvp in Squares)
-        {
-            if (int.TryParse(kvp.Value, out val))
-            {
-                sb.Add(val);
-            }
-        }
+        return squares.FirstOrDefault(s => s.Position == position);
     }
 
-    private bool InFirstColumn(int position)
-    {
-        return position % width == 0;
-    }
+	private class GridSquare
+	{
+		public (int x, int y) Position { get; set; }
 
-    private bool InFirstRow(int position)
-    {
-        return position < width;
-    }
+		public char Value { get; set; }
 
-    private bool InLastColumn(int position)
-    {
-        return (position + 1) % width == 0;
-    }
+		public GridSquare(int x, int y, char value)
+		{
+			Position = new(x, y);
+			Value = value;
+		}
 
-    private bool InLastRow(int position)
-    {
-        return position + width >= (height * width);
-    }
+		private List<GridSquare>? adjacentSquares;
+
+		public void SetAdjacentSquares(List<GridSquare> adj)
+		{
+			adjacentSquares = adj;
+		}
+
+		public bool ValidValue(Func<char, bool> criterion)
+		{
+			return criterion(Value);
+		}
+
+		public bool ValidAdjacent(Func<char[], bool> criterion)
+		{
+			var adjacentCharacters = adjacentSquares.Select(s => s.Value).ToList();
+			return criterion(adjacentCharacters.ToArray());
+		}
+
+		public bool InFirstColumn()
+		{
+			return Position.x == 0;
+		}
+
+		public bool InFirstRow()
+		{
+			return Position.y == 0;
+		}
+
+		public bool InLastColumn(int width)
+		{
+			return Position.x >= width - 1;
+		}
+
+		public bool InLastRow(int height)
+		{
+			return Position.y >= height - 1;
+		}
+	}
 }
+

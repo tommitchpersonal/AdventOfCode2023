@@ -5,6 +5,11 @@ public class PartNumber
 
     public PartNumber(List<char> chars)
     {
-        Positions = chars.Select(c => int.Parse(c));
+        foreach (var c in chars)
+        {
+            Positions.Add(int.Parse(c.ToString()));
+        }
+
+        Value = int.Parse(chars.ToString());
     }
 }
