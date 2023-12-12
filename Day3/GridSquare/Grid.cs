@@ -21,23 +21,32 @@ public class Grid
                 squares.Add(new GridSquare(x, y, row[x]));
             }
         }
+
+		foreach (var square in squares)
+		{
+			var adjacentSquares = GetAdjacentSquares(square);
+			square.SetAdjacentSquares(adjacentSquares.ToList());
+		}
     }
 
 	public List<char[]> GetValidStrings(Func<char, bool> itemCriterion, Func<char[], bool> adjacentCriterion)
 	{
 		var result = new List<char[]>();
-		var placeholder = new List<char>();
+		var placeholder = new List<GridSquare>();
 
 		foreach (var square in squares)
 		{
-			if (itemCriterion(square.Value) && adjacentCriterion(GetAdjacentValues(square.Position).ToArray()))
+			if (square.ValidValue(itemCriterion))
 			{
-				placeholder.Add(square.Value);
+				placeholder.Add(square);
 			}
-			else if (placeholder.Any())
+			else if (placeholder.Any(p => p.ValidAdjacent(adjacentCriterion)))
 			{
-				var array = placeholder.ToArray();
-				result.Add(array);
+				result.Add(placeholder.Select(p => p.Value).ToArray());
+				placeholder.Clear();
+			}
+			else
+			{
 				placeholder.Clear();
 			}
 		}
@@ -45,11 +54,11 @@ public class Grid
 		return result;
 	}
 
-    private IEnumerable<char>? GetAdjacentValues((int x, int y) position)
+    private IEnumerable<GridSquare>? GetAdjacentSquares(GridSquare square)
     {
-        var values = new List<char>();
+        var adjacentSquares = new List<GridSquare>();
 
-        var square = FindByPosition(position);
+        var position = square.Position;
 
         if (square == null)
         {
@@ -60,59 +69,59 @@ public class Grid
         {
             (int x, int y) pos = new(position.x - 1, position.y);
             var adj = FindByPosition(pos);
-            values.Add(adj.Value);
+			adjacentSquares.Add(adj);
         }
 
         if (!square.InFirstColumn() && !square.InFirstRow())
         {
 			(int x, int y) pos = new(position.x - 1, position.y - 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
         if (!square.InFirstRow())
         {
 			(int x, int y) pos = new(position.x, position.y - 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
 		if (!square.InFirstRow() && !square.InLastColumn(width))
 		{
 			(int x, int y) pos = new(position.x + 1, position.y - 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
 		if (!square.InLastColumn(width))
 		{
 			(int x, int y) pos = new(position.x + 1, position.y);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
 		if (!square.InLastColumn(width) && !square.InLastRow(height))
 		{
 			(int x, int y) pos = new(position.x + 1, position.y + 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
 		if (!square.InLastRow(height))
 		{
 			(int x, int y) pos = new(position.x, position.y + 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
 		if (!square.InLastRow(height) && !square.InFirstColumn())
 		{
 			(int x, int y) pos = new(position.x - 1, position.y + 1);
 			var adj = FindByPosition(pos);
-			values.Add(adj.Value);
+			adjacentSquares.Add(adj);
 		}
 
-		return values;
+		return adjacentSquares;
     }
 
     private GridSquare FindByPosition((int x, int y) position)
@@ -130,6 +139,24 @@ public class Grid
 		{
 			Position = new(x, y);
 			Value = value;
+		}
+
+		private List<GridSquare>? adjacentSquares;
+
+		public void SetAdjacentSquares(List<GridSquare> adj)
+		{
+			adjacentSquares = adj;
+		}
+
+		public bool ValidValue(Func<char, bool> criterion)
+		{
+			return criterion(Value);
+		}
+
+		public bool ValidAdjacent(Func<char[], bool> criterion)
+		{
+			var adjacentCharacters = adjacentSquares.Select(s => s.Value).ToList();
+			return criterion(adjacentCharacters.ToArray());
 		}
 
 		public bool InFirstColumn()
